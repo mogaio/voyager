@@ -6,18 +6,23 @@ import {Channel} from 'vega-lite/build/src/channel';
 import * as styles from './encoding-pane.scss';
 
 import {SHORT_WILDCARD} from 'compassql/build/src/wildcard';
+import {OneOfFilter, RangeFilter} from 'vega-lite/build/src/filter';
+import {FilterAction} from '../../actions/filter';
 import {ActionHandler} from '../../actions/index';
 import {createDispatchHandler} from '../../actions/redux-action';
 import {ResultAsyncAction, resultRequest} from '../../actions/result';
 import {SHELF_CLEAR, ShelfAction} from '../../actions/shelf';
 import {ShelfUnitSpec, State} from '../../models';
 import {EncodingShelf} from './encoding-shelf';
+import {FilterShelf} from './filter-shelf';
 import {MarkPicker} from './mark-picker';
 
-interface EncodingPanelProps extends ActionHandler<ShelfAction | ResultAsyncAction> {
+interface EncodingPanelProps extends ActionHandler<ShelfAction | ResultAsyncAction | FilterAction> {
   spec: ShelfUnitSpec;
 
   specPreview: ShelfUnitSpec;
+
+  filters: Array<RangeFilter | OneOfFilter>;
 }
 
 
@@ -85,6 +90,11 @@ class EncodingPanelBase extends React.PureComponent<EncodingPanelProps, {}> {
           <h3>Wildcard Shelves</h3>
           {wildcardShelves}
         </div>
+
+        <div styleName="shelf-group">
+          <h3>Filter</h3>
+          {this.filterPane()}
+        </div>
       </div>
     );
   }
@@ -136,17 +146,29 @@ class EncodingPanelBase extends React.PureComponent<EncodingPanelProps, {}> {
     );
   }
 
+  private filterPane() {
+    const {filters, handleAction} = this.props;
+    let index = -1;
+    const filterPane = filters.map(filter => {
+      index++;
+      return (
+        <FilterShelf key={index} index={index} filter={filter} handleAction={handleAction}/>
+      );
+    });
+    return <div>{filterPane}</div>;
+  }
+
   private onClear() {
     this.props.handleAction({type: SHELF_CLEAR});
   }
 }
 
-
 export const EncodingPane = connect(
   (state: State) => {
     return {
       spec: state.present.shelf.spec,
-      specPreview: state.present.shelf.specPreview
+      specPreview: state.present.shelf.specPreview,
+      filters: state.present.shelf.spec.filters
     };
   },
   createDispatchHandler<ShelfAction>()

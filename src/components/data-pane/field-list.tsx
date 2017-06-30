@@ -1,19 +1,26 @@
+
+import {Schema} from 'compassql/build/src/schema';
 import * as React from 'react';
 import * as CSSModules from 'react-css-modules';
 import {connect} from 'react-redux';
-import * as styles from './field-list.scss';
-
+import {OneOfFilter, RangeFilter} from 'vega-lite/build/src/filter';
+import {FilterAction} from '../../actions/filter';
 import {ActionHandler, createDispatchHandler} from '../../actions/redux-action';
 import {SHELF_FIELD_AUTO_ADD, ShelfFieldAutoAdd} from '../../actions/shelf';
 import {FieldParentType} from '../../constants';
 import {State} from '../../models/index';
 import {ShelfFieldDef} from '../../models/shelf/encoding';
+import {getFilters} from '../../selectors';
 import {getPresetWildcardFields, getSchemaFieldDefs} from '../../selectors';
+import {getSchema} from '../../selectors/index';
 import {Field} from '../field';
+import * as styles from './field-list.scss';
 
 
-export interface FieldListProps extends ActionHandler<ShelfFieldAutoAdd> {
+export interface FieldListProps extends ActionHandler<ShelfFieldAutoAdd | FilterAction> {
   fieldDefs: ShelfFieldDef[];
+  filters: Array<RangeFilter | OneOfFilter>;
+  schema: Schema;
 }
 
 class FieldListBase extends React.PureComponent<FieldListProps, {}> {
@@ -26,17 +33,20 @@ class FieldListBase extends React.PureComponent<FieldListProps, {}> {
   }
 
   public render() {
-    const {fieldDefs} = this.props;
-
+    const {fieldDefs, handleAction, filters, schema} = this.props;
     const fieldItems = fieldDefs.map(fieldDef => {
+      const filterHide = fieldDef.field === '?' || fieldDef.field === '*';
       return (
         <div key={JSON.stringify(fieldDef)} styleName="field-list-item">
           <Field
             fieldDef={fieldDef}
             isPill={true}
             draggable={true}
+            filters={filters}
+            filterHide={filterHide}
+            handleAction={handleAction}
             parentId={{type: FieldParentType.FIELD_LIST}}
-
+            schema={schema}
             onDoubleClick={this.onAdd}
             onAdd={this.onAdd}
           />
@@ -67,7 +77,9 @@ export const FieldList = connect(
     return {
       fieldDefs: getSchemaFieldDefs(state).concat([
         {aggregate: 'count', field: '*', type: 'quantitative', title: 'Number of Records'}
-      ])
+      ]),
+      filters: getFilters(state),
+      schema: getSchema(state)
     };
   },
   createDispatchHandler<ShelfFieldAutoAdd>()

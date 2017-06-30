@@ -1,12 +1,19 @@
+import {FieldQuery} from 'compassql/build/src/query/encoding';
 import {ExpandedType} from 'compassql/build/src/query/expandedtype';
+import {Schema} from 'compassql/build/src/schema';
 import {isWildcard} from 'compassql/build/src/wildcard';
 import * as React from 'react';
 import * as CSSModules from 'react-css-modules';
 import {DragElementWrapper, DragSource, DragSourceCollector, DragSourceSpec} from 'react-dnd';
-import {DraggableType, FieldParentType} from '../../constants';
-import {ShelfFieldDef} from '../../models';
-import {ShelfId} from '../../models/shelf';
+import {OneOfFilter, RangeFilter} from 'vega-lite/build/src/filter';
+
 import * as styles from './field.scss';
+
+import {FILTER_ADD, FILTER_REMOVE, FilterAction} from '../../actions/filter';
+import {DraggableType, FieldParentType} from '../../constants';
+import {ShelfId} from '../../models/shelf';
+import {ShelfFieldDef} from '../../models/shelf/encoding';
+
 
 /**
  * Props for react-dnd of Field
@@ -44,17 +51,39 @@ export interface FieldPropsBase {
 
   /** Remove field event handler.  If not provided, remove button will disappear. */
   onRemove?: () => void;
+
+  onToggleFilter?: () => void;
+
+  handleAction?: (action: FilterAction) => void;
+
+  filters?: Array<RangeFilter | OneOfFilter>;
+
+  filterHide?: boolean;
+
+  schema?: Schema;
+
 };
 
 export interface FieldProps extends FieldDragSourceProps, FieldPropsBase {};
 
-class FieldBase extends React.PureComponent<FieldProps, {}> {
+export interface FieldStates {
+  inFilter: boolean;
+  filterIndex: number;
+}
+
+class FieldBase extends React.PureComponent<FieldProps, FieldStates> {
   constructor(props: FieldProps) {
     super(props);
 
     // Bind - https://facebook.github.io/react/docs/handling-events.html
     this.onAdd = this.onAdd.bind(this);
     this.onDoubleClick = this.onDoubleClick.bind(this);
+    this.onToggleFilter = this.onToggleFilter.bind(this);
+
+    this.state = ({
+      inFilter: false,
+      filterIndex: -1
+    });
   }
 
   public render(): JSX.Element {
@@ -71,6 +100,7 @@ class FieldBase extends React.PureComponent<FieldProps, {}> {
         <span styleName="text" title={title}>
           {title || field}
         </span>
+        {this.addFilter()}
         {this.addSpan()}
         {this.removeSpan()}
       </span>
@@ -79,15 +109,91 @@ class FieldBase extends React.PureComponent<FieldProps, {}> {
     // Wrap with connect dragSource if it is injected
     return connectDragSource ? connectDragSource(component) : component;
   }
+
+  protected filterAdd(filter: RangeFilter | OneOfFilter, index: number): void {
+    const {handleAction} = this.props;
+    handleAction({
+      type: FILTER_ADD,
+      payload: {
+        filter: filter,
+        index: index
+      }
+    });
+  }
+
+  protected filterRemove(index: number): void {
+    const {handleAction} = this.props;
+    handleAction({
+      type: FILTER_REMOVE,
+      payload: {
+        index: index
+      }
+    });
+  }
+
+  protected removeFilter(index: number): void {
+    const {handleAction} = this.props;
+    handleAction({
+      type: FILTER_REMOVE,
+      payload: {
+        index: index
+      }
+    });
+  }
+
+  private onToggleFilter() {
+    const {fieldDef, filters, schema} = this.props;
+    const domain = schema.domain(fieldDef as FieldQuery);
+    const filter: RangeFilter | OneOfFilter = this.getFilter(fieldDef, domain);
+    if (this.state.inFilter) {
+      this.removeFilter(this.state.filterIndex);
+      this.setState({
+        inFilter: false,
+        filterIndex: -1
+      });
+    } else {
+      // append to the end by default
+      const filterIndex = filters.length;
+      this.filterAdd(filter, filterIndex);
+      this.setState({
+        inFilter: true,
+        filterIndex: filterIndex
+      });
+    }
+  }
+
+  private getFilter(fieldDef: ShelfFieldDef, domain: any[]) {
+    if (typeof fieldDef.field !== 'string') {
+      return;
+    }
+    switch (fieldDef.type) {
+      case ExpandedType.QUANTITATIVE:
+      case ExpandedType.TEMPORAL:
+        return {field: fieldDef.field, range: domain};
+      case ExpandedType.NOMINAL:
+      case ExpandedType.ORDINAL:
+        return {field: fieldDef.field, oneOf: domain};
+      default:
+        return;
+    }
+  }
+
   private addSpan() {
     return this.props.onAdd && (
       <span><a onClick={this.onAdd}><i className="fa fa-plus"/></a></span>
     );
   }
+
   private removeSpan() {
     const onRemove = this.props.onRemove;
     return onRemove && (
       <span><a onClick={onRemove}><i className="fa fa-times"/></a></span>
+    );
+  }
+
+  private addFilter() {
+    return !this.props.filterHide && (
+      <span><a onClick={this.onToggleFilter}><i className='fa fa-filter'/></a></span>
     );
   }
 

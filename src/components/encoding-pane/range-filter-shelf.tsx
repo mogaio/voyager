@@ -1,0 +1,45 @@
+import * as React from 'react';
+import {DateTime} from 'vega-lite/build/src/datetime';
+import {RangeFilter} from 'vega-lite/build/src/filter';
+
+import {FILTER_MODIFY_MAX_BOUND, FILTER_MODIFY_MIN_BOUND, FilterAction} from '../../actions/filter';
+
+export interface RangeFilterShelfProps {
+  filter: RangeFilter;
+  handleAction: (action: FilterAction) => void;
+}
+
+class RangeFilterShelfBase extends React.Component<RangeFilterShelfProps, {}> {
+  public render() {
+    const {filter} = this.props;
+    return (
+      <div>
+        {filter.range}
+      </div>
+    );
+  }
+
+  protected FilterModifyMaxBound(index: number, maxBound: number | DateTime) {
+    const {handleAction} = this.props;
+    handleAction({
+      type: FILTER_MODIFY_MAX_BOUND,
+      payload: {
+        index: index,
+        maxBound: maxBound
+      }
+    });
+  }
+
+  protected filterModifyMinBound(index: number, minBound: number | DateTime) {
+    const {handleAction} = this.props;
+    handleAction({
+      type: FILTER_MODIFY_MIN_BOUND,
+      payload: {
+        index: index,
+        minBound: minBound
+      }
+    });
+  }
+}
+
+export const RangeFilterShelf = RangeFilterShelfBase;
