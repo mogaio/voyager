@@ -4,6 +4,7 @@ $radius: 3px;
   background-color: white;
   border-radius: $radius;
   border: 1px solid #ddd;
+  margin-bottom: 4px;
 
   :global .fa {
     &.fa-times {

@@ -52,8 +52,6 @@ export interface FieldPropsBase {
   /** Remove field event handler.  If not provided, remove button will disappear. */
   onRemove?: () => void;
 
-  onToggleFilter?: () => void;
-
   handleAction?: (action: FilterAction) => void;
 
   filters?: Array<RangeFilter | OneOfFilter>;
@@ -66,24 +64,14 @@ export interface FieldPropsBase {
 
 export interface FieldProps extends FieldDragSourceProps, FieldPropsBase {};
 
-export interface FieldStates {
-  inFilter: boolean;
-  filterIndex: number;
-}
-
-class FieldBase extends React.PureComponent<FieldProps, FieldStates> {
+class FieldBase extends React.PureComponent<FieldProps, {}> {
   constructor(props: FieldProps) {
     super(props);
 
     // Bind - https://facebook.github.io/react/docs/handling-events.html
     this.onAdd = this.onAdd.bind(this);
     this.onDoubleClick = this.onDoubleClick.bind(this);
-    this.onToggleFilter = this.onToggleFilter.bind(this);
-
-    this.state = ({
-      inFilter: false,
-      filterIndex: -1
-    });
+    this.onAddFilter = this.onAddFilter.bind(this);
   }
 
   public render(): JSX.Element {
@@ -100,7 +88,7 @@ class FieldBase extends React.PureComponent<FieldProps, FieldStates> {
         <span styleName="text" title={title}>
           {title || field}
         </span>
-        {this.addFilter()}
+        {this.addFilterSpan()}
         {this.addSpan()}
         {this.removeSpan()}
       </span>
@@ -141,25 +129,13 @@ class FieldBase extends React.PureComponent<FieldProps, FieldStates> {
     });
   }
 
-  private onToggleFilter() {
+  private onAddFilter() {
     const {fieldDef, filters, schema} = this.props;
     const domain = schema.domain(fieldDef as FieldQuery);
     const filter: RangeFilter | OneOfFilter = this.getFilter(fieldDef, domain);
-    if (this.state.inFilter) {
-      this.removeFilter(this.state.filterIndex);
-      this.setState({
-        inFilter: false,
-        filterIndex: -1
-      });
-    } else {
-      // append to the end by default
-      const filterIndex = filters.length;
-      this.filterAdd(filter, filterIndex);
-      this.setState({
-        inFilter: true,
-        filterIndex: filterIndex
-      });
-    }
+    // append to the end by default
+    const filterIndex = filters.length;
+    this.filterAdd(filter, filterIndex);
   }
 
   private getFilter(fieldDef: ShelfFieldDef, domain: any[]) {
@@ -191,9 +167,9 @@ class FieldBase extends React.PureComponent<FieldProps, FieldStates> {
     );
   }
 
-  private addFilter() {
+  private addFilterSpan() {
     return !this.props.filterHide && (
-      <span><a onClick={this.onToggleFilter}><i className='fa fa-filter'/></a></span>
+      <span><a onClick={this.onAddFilter}><i className='fa fa-filter'/></a></span>
     );
   }
 

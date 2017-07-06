@@ -1,7 +1,6 @@
 import * as React from 'react';
 import * as CSSModules from 'react-css-modules';
 import {isOneOfFilter, isRangeFilter, OneOfFilter, RangeFilter} from 'vega-lite/build/src/filter';
-
 import {FILTER_REMOVE, FilterAction} from '../../actions/filter';
 import * as styles from './filter-shelf.scss';
 import {OneOfFilterShelf} from './one-of-filter-shelf';
@@ -12,6 +11,7 @@ export interface FilterShelfProps {
   index: number;
   filter: RangeFilter | OneOfFilter;
   handleAction?: (action: FilterAction) => void;
+  domain: any[];
 }
 
 class FilterShelfBase extends React.Component<FilterShelfProps, {}> {
@@ -41,11 +41,11 @@ class FilterShelfBase extends React.Component<FilterShelfProps, {}> {
   }
 
   private renderFilter() {
-    const {filter, handleAction} = this.props;
+    const {domain, filter, index, handleAction} = this.props;
     if (isRangeFilter(filter)) {
-      return <RangeFilterShelf filter={filter} handleAction={handleAction}/>;
+      return <RangeFilterShelf domain={domain} index={index} filter={filter} handleAction={handleAction}/>;
     } else if (isOneOfFilter(filter)) {
-      return <OneOfFilterShelf filter={filter} handleAction={handleAction}/>;
+      return <OneOfFilterShelf domain={domain} index={index} filter={filter} handleAction={handleAction}/>;
     }
   }
 }

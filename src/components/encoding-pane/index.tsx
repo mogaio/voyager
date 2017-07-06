@@ -3,19 +3,23 @@ import * as CSSModules from 'react-css-modules';
 import {connect} from 'react-redux';
 import {Channel} from 'vega-lite/build/src/channel';
 
-import * as styles from './encoding-pane.scss';
-
+import {FieldQuery} from 'compassql/build/src/query/encoding';
+import {Schema} from 'compassql/build/src/schema';
 import {SHORT_WILDCARD} from 'compassql/build/src/wildcard';
 import {OneOfFilter, RangeFilter} from 'vega-lite/build/src/filter';
+import {ShelfFieldDef} from '../../../build/src/models/shelf/encoding';
 import {FilterAction} from '../../actions/filter';
 import {ActionHandler} from '../../actions/index';
 import {createDispatchHandler} from '../../actions/redux-action';
 import {ResultAsyncAction, resultRequest} from '../../actions/result';
 import {SHELF_CLEAR, ShelfAction} from '../../actions/shelf';
 import {ShelfUnitSpec, State} from '../../models';
+import {getSchemaFieldDefs} from '../../selectors/index';
+import * as styles from './encoding-pane.scss';
 import {EncodingShelf} from './encoding-shelf';
 import {FilterShelf} from './filter-shelf';
 import {MarkPicker} from './mark-picker';
+
 
 interface EncodingPanelProps extends ActionHandler<ShelfAction | ResultAsyncAction | FilterAction> {
   spec: ShelfUnitSpec;
@@ -23,6 +27,10 @@ interface EncodingPanelProps extends ActionHandler<ShelfAction | ResultAsyncActi
   specPreview: ShelfUnitSpec;
 
   filters: Array<RangeFilter | OneOfFilter>;
+
+  schema: Schema;
+
+  fieldDefs: ShelfFieldDef[];
 }
 
 
@@ -107,7 +115,6 @@ class EncodingPanelBase extends React.PureComponent<EncodingPanelProps, {}> {
 
     const {handleAction, spec, specPreview} = this.props;
     const {encoding} = specPreview || spec;
-
     return (
       <EncodingShelf
         key={channel}
@@ -147,15 +154,26 @@ class EncodingPanelBase extends React.PureComponent<EncodingPanelProps, {}> {
   }
 
   private filterPane() {
-    const {filters, handleAction} = this.props;
+    const {filters, fieldDefs, schema, handleAction} = this.props;
     let index = -1;
     const filterPane = filters.map(filter => {
       index++;
+      const fieldIndex = schema.fieldNames().indexOf(filter.field);
       return (
-        <FilterShelf key={index} index={index} filter={filter} handleAction={handleAction}/>
+        <FilterShelf
+          key={index}
+          domain={schema.domain(fieldDefs[fieldIndex] as FieldQuery)}
+          index={index}
+          filter={filter}
+          handleAction={handleAction}
+        />
       );
     });
-    return <div>{filterPane}</div>;
+    return (
+      <div styleName='filter-pane'>
+        {filterPane}
+      </div>
+    );
   }
 
   private onClear() {
@@ -168,7 +186,9 @@ export const EncodingPane = connect(
     return {
       spec: state.present.shelf.spec,
       specPreview: state.present.shelf.specPreview,
-      filters: state.present.shelf.spec.filters
+      filters: state.present.shelf.spec.filters,
+      schema: state.present.dataset.schema,
+      fieldDefs: getSchemaFieldDefs(state)
     };
   },
   createDispatchHandler<ShelfAction>()
